@@ -2,10 +2,12 @@
 # MAGIC %md
 # MAGIC
 # MAGIC ## BEFORE RUNNING THIS NOTEBOOK
-# MAGIC 1. Optionally run notebook `01 Export Comments`
-# MAGIC 2. Download the Csv file from the `staging/output` folder of the volume
-# MAGIC 3. Edit the comments offline in the Csv file
-# MAGIC 4. Upload the curated Csv file to the `staging/input` folder of the Unity Catalog Volume.
+# MAGIC Make sure you are running in a Unity Catalog enabled workspace, have access to the system tables, and have the proper UC permissions. It will be best if you are able to create a new catalog to store the assets created by these notebooks. Otherwise you would need access to an existing catalog.
+# MAGIC
+# MAGIC 1. Optionally run notebook `01 Export Comments` and download the Csv file from the `staging/output` folder of the volume
+# MAGIC 2. Edit the comments offline in the Csv file
+# MAGIC 3. Upload the curated Csv file to the `staging/input` folder of the Unity Catalog Volume.
+# MAGIC 4. Set the widgets and run the notebook
 # MAGIC
 # MAGIC The default file is named `curated_metadata.csv` but you can specify this in the widgets.
 # MAGIC
@@ -80,8 +82,13 @@ dbutils.widgets.text("input_file_name", "curated_metadata.csv", "Enter Input Fil
 
 staging_catalog = dbutils.widgets.get("staging_catalog")
 input_file_name = dbutils.widgets.get("input_file_name")
-staging_path = f"/Volumes/{staging_catalog}/bulk_comment_curation/staging/input/{input_file_name}"
-print(staging_path)
+
+staging_path = f"/Volumes/{staging_catalog}/bulk_comment_curation/staging"
+dbutils.fs.mkdirs(f"{staging_path}/output")
+dbutils.fs.mkdirs(f"{staging_path}/input")
+
+file_path = f"/Volumes/{staging_catalog}/bulk_comment_curation/staging/input/{input_file_name}"
+print(file_path)
 
 # COMMAND ----------
 
@@ -90,12 +97,12 @@ print(staging_path)
 from pyspark.sql.utils import AnalysisException
 
 # Check for proper file type
-if not staging_path.endswith('.csv'):
+if not file_path.endswith('.csv'):
     raise ValueError("File is not a CSV.")
 
 try:
     # Read the file
-    df = spark.read.option("header", "true").csv(staging_path)
+    df = spark.read.option("header", "true").csv(file_path)
     
     # Check for required columns
     required_columns = ["type", "table_catalog", "table_schema", "table_name", "column_name", "comment"]
@@ -113,7 +120,19 @@ df.createOrReplaceTempView("updated_metadata")
 
 # MAGIC %md
 # MAGIC ## Create list of new/changed comments
-# MAGIC Use the working table for performance here instead of reading from system tables each time.
+# MAGIC Use the working table for performance here instead of reading from system tables each time. If you ran the 01 Export Comments notebook, the metadata table will already exist, otherwise we create a blank table here.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC CREATE TABLE IF NOT EXISTS metadata (
+# MAGIC   type STRING,
+# MAGIC   table_catalog STRING COMMENT 'Catalog that contains the relation.',
+# MAGIC   table_schema STRING COMMENT 'Schema that contains the relation.',
+# MAGIC   table_name STRING COMMENT 'Name of the relation.',
+# MAGIC   column_name STRING,
+# MAGIC   comment STRING COMMENT 'An optional comment that describes the relation.')
 
 # COMMAND ----------
 
@@ -138,7 +157,7 @@ df.createOrReplaceTempView("updated_metadata")
 # MAGIC   AND a.table_schema = b.table_schema
 # MAGIC   AND a.table_name = b.table_name
 # MAGIC   AND IFNULL(a.column_name, '99999') = IFNULL(b.column_name, '99999')
-# MAGIC WHERE a.comment != b.comment
+# MAGIC WHERE IFNULL(a.comment, '99999') != IFNULL(b.comment, '99999')
 # MAGIC ;
 # MAGIC
 # MAGIC SELECT * FROM changes;
@@ -185,5 +204,5 @@ for row in metadata_df.collect():
 # MAGIC   AND metadata.table_schema = changes.table_schema
 # MAGIC   AND metadata.table_name = changes.table_name
 # MAGIC   AND IFNULL(metadata.column_name, '99999') = IFNULL(changes.column_name, '99999')
-# MAGIC WHEN MATCHED AND metadata.comment != changes.comment THEN
+# MAGIC WHEN MATCHED AND IFNULL(metadata.comment, '99999') != IFNULL(changes.comment, '99999') THEN
 # MAGIC   UPDATE SET comment = changes.comment;

@@ -1,7 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC ## BEFORE RUNNING THIS NOTEBOOK
-# MAGIC Makle sure you are running in a Unity Catalog enabled workspace, have access to the stystem tables, and have the proper UC permissions. It will be best if you are able to create a new catalog to store the assets created by these notebooks. Otherwise you would need access to an existing catalog.
+# MAGIC Make sure you are running in a Unity Catalog enabled workspace, have access to the system tables, and have the proper UC permissions. It will be best if you are able to create a new catalog to store the assets created by these notebooks. Otherwise you would need access to an existing catalog.
+# MAGIC
+# MAGIC Running this notebook first will make the 02 Import Comments notebook run faster, especially if you are updating existing UC metadata rather than creating new metadata for the first time.
 # MAGIC
 # MAGIC ## Define Widgets
 # MAGIC **source_catalog**: The catalog containing the tables and columns for which you want to export the comments.
@@ -10,8 +12,8 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("source_catalog", "", "Enter Source Catalog:")
-dbutils.widgets.text("staging_catalog", "", "Enter Staging Catalog:")
+dbutils.widgets.text("source_catalog", "_evan", "Enter Source Catalog:")
+dbutils.widgets.text("staging_catalog", "_evan", "Enter Staging Catalog:")
 
 # COMMAND ----------
 
