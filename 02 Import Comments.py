@@ -39,7 +39,7 @@
 # MAGIC       </tr>
 # MAGIC       <tr>
 # MAGIC          <td>column_name</td>
-# MAGIC          <td>Columns containing comments. Will be null for table records.</td>
+# MAGIC          <td>Columns containing comments. Will be null (blank) for table records.</td>
 # MAGIC       </tr>
 # MAGIC      <tr>
 # MAGIC          <td>comment</td>
